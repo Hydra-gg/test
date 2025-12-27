@@ -250,3 +250,10 @@ export async function getTikTokMetrics(
         };
     });
 }
+
+export async function refreshTikTokToken(
+    refreshToken: string,
+    app: CompanyOAuthApp
+): Promise<TikTokTokenResponse> {
+    throw new Error('TikTok does not support token refresh - tokens are long-lived (1 year)');
+}

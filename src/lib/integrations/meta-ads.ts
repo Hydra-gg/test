@@ -242,3 +242,61 @@ export async function getMetaCampaignInsights(
         };
     });
 }
+
+export interface MetaMetrics {
+    campaignId: string;
+    date: string;
+    impressions: number;
+    clicks: number;
+    conversions: number;
+    spend: number;
+    revenue: number;
+}
+
+export async function getMetaMetrics(
+    accessToken: string,
+    adAccountId: string,
+    startDate: string,
+    endDate: string
+): Promise<MetaMetrics[]> {
+    const fields = 'campaign_id,date_start,impressions,clicks,spend,actions,action_values';
+    const response = await fetch(
+        `${META_API_BASE}/${adAccountId}/insights?fields=${fields}&time_range={"since":"${startDate}","until":"${endDate}"}&time_increment=1&level=campaign&access_token=${accessToken}`
+    );
+
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Failed to fetch metrics: ${error}`);
+    }
+
+    const data = await response.json();
+
+    return (data.data || []).map((metric: Record<string, unknown>) => {
+        const actions = metric.actions as Array<{ action_type: string; value: string }> || [];
+        const conversions = actions
+            .filter(a => ['purchase', 'lead', 'complete_registration'].includes(a.action_type))
+            .reduce((sum, a) => sum + parseFloat(a.value || '0'), 0);
+
+        const actionValues = metric.action_values as Array<{ action_type: string; value: string }> || [];
+        const revenue = actionValues
+            .filter(a => a.action_type === 'purchase')
+            .reduce((sum, a) => sum + parseFloat(a.value || '0'), 0);
+
+        return {
+            campaignId: metric.campaign_id as string,
+            date: metric.date_start as string,
+            impressions: parseInt(metric.impressions as string || '0'),
+            clicks: parseInt(metric.clicks as string || '0'),
+            conversions,
+            spend: parseFloat(metric.spend as string || '0'),
+            revenue,
+        };
+    });
+}
+
+export async function refreshMetaToken(
+    currentToken: string,
+    app: CompanyOAuthApp
+): Promise<MetaTokenResponse> {
+    return getLongLivedToken(currentToken, app);
+}

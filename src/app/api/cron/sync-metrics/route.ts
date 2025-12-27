@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { syncCompanyData } from '@/lib/services/sync-service';
+import { syncCompanyData, syncAllCompanies } from '@/lib/services/platform-sync';
 
 export async function GET(request: NextRequest) {
     try {
@@ -53,22 +53,12 @@ export async function GET(request: NextRequest) {
         if (companyIdToSync && scope !== 'force_all') {
             // Sync specific company (manual trigger case)
             console.log(`Starting manual sync for company ${companyIdToSync}`);
-            const companyResults = await syncCompanyData(companyIdToSync);
+            const companyResults = await syncCompanyData(companyIdToSync, { daysBack: 30 });
             results.push(...companyResults);
         } else {
             // Sync all companies (Cron case)
             console.log('Starting global sync...');
-
-            // Fetch all companies
-            // Note: In a real SaaS, iterate via pagination
-            const { data: companies } = await supabase.from('companies').select('id');
-
-            if (companies) {
-                for (const company of companies) {
-                    const companyResults = await syncCompanyData(company.id);
-                    results.push(...companyResults);
-                }
-            }
+            await syncAllCompanies({ daysBack: 7 });
         }
 
         return NextResponse.json({

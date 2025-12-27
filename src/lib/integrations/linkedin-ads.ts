@@ -202,6 +202,7 @@ export async function getLinkedInCampaigns(
 
 export interface LinkedInMetrics {
     campaignId: string;
+    date: string;
     impressions: number;
     clicks: number;
     conversions: number;
@@ -218,7 +219,7 @@ export async function getLinkedInMetrics(
     const [endYear, endMonth, endDay] = endDate.split('-');
 
     const response = await fetch(
-        `${LINKEDIN_API_BASE}/adAnalyticsV2?q=analytics&pivot=CAMPAIGN&dateRange=(start:(day:${startDay},month:${startMonth},year:${startYear}),end:(day:${endDay},month:${endMonth},year:${endYear}))&accounts=List(urn%3Ali%3AsponsoredAccount%3A${accountId})&fields=impressions,clicks,externalWebsiteConversions,costInLocalCurrency`,
+        `${LINKEDIN_API_BASE}/adAnalyticsV2?q=analytics&pivot=CAMPAIGN&timeGranularity=DAILY&dateRange=(start:(day:${startDay},month:${startMonth},year:${startYear}),end:(day:${endDay},month:${endMonth},year:${endYear}))&accounts=List(urn%3Ali%3AsponsoredAccount%3A${accountId})&fields=impressions,clicks,externalWebsiteConversions,costInLocalCurrency`,
         {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -237,8 +238,13 @@ export async function getLinkedInMetrics(
         const pivotValue = row.pivotValue as string || '';
         const campaignId = pivotValue.replace('urn:li:sponsoredCampaign:', '');
 
+        const dateRange = row.dateRange as Record<string, Record<string, number>> || {};
+        const start = dateRange.start || {};
+        const date = `${start.year}-${String(start.month).padStart(2, '0')}-${String(start.day).padStart(2, '0')}`;
+
         return {
             campaignId,
+            date,
             impressions: row.impressions as number || 0,
             clicks: row.clicks as number || 0,
             conversions: row.externalWebsiteConversions as number || 0,
